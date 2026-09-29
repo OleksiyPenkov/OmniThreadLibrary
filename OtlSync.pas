@@ -2367,8 +2367,11 @@ var
   i             : integer;
   waiter        : TWaiter;
 begin
+  // Local patch (X-RayCalc, 2026-09-30): UnregisterWait does not wait for a callback in flight, which then
+  // reads the list cleared below and crashes on a system thread (0x0EEDFADE / AV) once the pool waits on
+  // 64+ handles. UnregisterWaitEx with INVALID_HANDLE_VALUE waits for running callbacks to finish.
   for i := 0 to FWaitHandles.Count - 1 do
-    UnregisterWait(THandle(FWaitHandles[i]));
+    UnregisterWaitEx(THandle(FWaitHandles[i]), INVALID_HANDLE_VALUE);
 
   SetLength(FSignalledHandles, FWaitHandles.Count);
   countSignalled := 0;
