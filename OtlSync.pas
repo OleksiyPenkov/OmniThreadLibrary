@@ -2336,6 +2336,10 @@ var
   newWaitObject: THandle;
   waiter       : TWaiter;
 begin
+  // Local patch (X-RayCalc, 2026-09-30): a wait registered earlier in this loop can fire and run Awaited_Asy,
+  // which reads FWaitHandles.Objects[] while AddObject below grows (reallocates) the list -> stale read, AV.
+  FAwaitedLock.Acquire;
+  try
   FWaitHandles.Clear;
   for iHandle := Low(FHandles) to High(FHandles) do begin
     waiter := TWaiter.Create(Self, iHandle);
@@ -2349,6 +2353,7 @@ begin
 {$WARN SYMBOL_PLATFORM ON}
     FWaitHandles[idxWait] := newWaitObject;
   end;
+  finally FAwaitedLock.Release; end;
   SetLength(FSignalledHandles, 0);
 end; { TWaitFor.RegisterWaitHandles }
 
