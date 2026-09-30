@@ -582,7 +582,10 @@ begin
             else
               break; //while
           end; //while
-        until not retry;
+        // Local patch (X-RayCalc, 2026-09-30): stop once a message is in hand. A wake-up that finds the
+        // queue empty sets retry; 'until not retry' then dequeued again, overwrote Result and lost the
+        // message already in msg (a pool worker dropped MSG_RUN, and Parallel.For waited for ever).
+        until Result or (not retry);
       finally ceReader_ref.ContainerSubject.Detach(insertObserver, coiNotifyOnAllInserts); end;
     finally FreeAndNil(insertObserver); end;
     {$ELSE ~MSWINDOWS}
@@ -672,7 +675,8 @@ begin
               else
                 break; //while
             end; //while
-          until not retry;
+          // Local patch (X-RayCalc, 2026-09-30): stop once the message is sent (see ReceiveWait), or it is sent twice.
+          until Result or (not retry);
         finally ceWriter_ref.ContainerSubject.Detach(partlyEmptyObserver, coiNotifyOnPartlyEmpty); end;
       {$IFNDEF MSWINDOWS}
       finally FreeAndNil(partlyEmptyWaiter); end;
